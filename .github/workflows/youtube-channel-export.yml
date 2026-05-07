@@ -27,11 +27,12 @@ jobs:
           mkdir -p state
           mkdir -p docs
 
-          CHANNEL_URL="https://www.youtube.com/@YoganandaSRF/videos"
-          LAST_RUN_FILE="state/last_run.txt"
+          #CHANNEL_URL="https://www.youtube.com/@YoganandaSRF/videos"
+          CHANNEL_URL="https://www.youtube.com/@YoganandaYSS/videos"
+          LAST_RUN_FILE="state/yss_last_run.txt"
 
           TEMP_FILE="output/temp.csv"
-          FINAL_FILE="output/yogananda_videos.csv"
+          FINAL_FILE="output/yss_videos.csv"
 
           # header
           echo "video_id,title,thumbnail,upload_date,webpage_url,duration" > "$TEMP_FILE"
@@ -79,7 +80,7 @@ jobs:
           import csv
 
           rows = []
-          with open("output/yogananda_videos.csv", "r") as f:
+          with open("output/yss_videos.csv", "r") as f:
               reader = csv.DictReader(f)
               for r in reader:
                   rows.append(r)
