@@ -21,27 +21,47 @@ jobs:
           python -m pip install --upgrade pip
           pip install yt-dlp
 
-      - name: Export Channel Videos
+      - name: Export Videos
         run: |
           mkdir -p output
+          mkdir -p state
 
-          yt-dlp --flat-playlist \
-            --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
-            "https://www.youtube.com/@YoganandaSRF/videos" \
-            > output/yogananda_videos.csv
+          CHANNEL_URL="https://www.youtube.com/@YoganandaSRF/videos"
 
-      - name: Display CSV
-        run: |
-          cat output/yogananda_videos.csv
+          LAST_RUN_FILE="state/last_run.txt"
 
-      - name: Commit CSV
+          if [ -f "$LAST_RUN_FILE" ]; then
+            LAST_RUN=$(cat "$LAST_RUN_FILE")
+            echo "Previous run detected: $LAST_RUN"
+
+            yt-dlp --flat-playlist \
+              --ignore-errors \
+              --dateafter "$LAST_RUN" \
+              --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
+              "$CHANNEL_URL" \
+              > output/new_videos.csv
+
+          else
+            echo "First run detected — exporting ALL videos"
+
+            yt-dlp --flat-playlist \
+              --ignore-errors \
+              --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
+              "$CHANNEL_URL" \
+              > output/yogananda_videos.csv
+          fi
+
+          date -u +%Y%m%d > "$LAST_RUN_FILE"
+
+      - name: Commit Results
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add output/yogananda_videos.csv
+          git add output/
+          git add state/
 
           git diff --cached --quiet || (
-            git commit -m "Auto update YouTube export"
+            git commit -m "Update YouTube exports"
             git push
           )
