@@ -43,7 +43,7 @@ jobs:
             yt-dlp \
               --extractor-retries 3 \
               --sleep-interval 2 \
-              --max-sleep-interval 5
+              --max-sleep-interval 5 \
               --no-flat-playlist \
               --ignore-errors \
               --dateafter "$LAST_RUN" \
@@ -56,7 +56,7 @@ jobs:
             yt-dlp \
               --extractor-retries 3 \
               --sleep-interval 2 \
-              --max-sleep-interval 5
+              --max-sleep-interval 5 \
               --no-flat-playlist \
               --ignore-errors \
               --print "%(id)s,\"%(title)s\",\"%(thumbnail)s\",\"%(upload_date>%Y-%m-%d)s\",\"%(webpage_url)s\",\"%(duration_string)s\"" \
