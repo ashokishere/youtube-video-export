@@ -1,4 +1,4 @@
-name: Export YouTube Videos
+name: YouTube Export + Dashboard
 
 on:
   workflow_dispatch:
@@ -25,43 +25,107 @@ jobs:
         run: |
           mkdir -p output
           mkdir -p state
+          mkdir -p docs
 
           CHANNEL_URL="https://www.youtube.com/@YoganandaSRF/videos"
-
           LAST_RUN_FILE="state/last_run.txt"
+
+          TEMP_FILE="output/temp.csv"
+          FINAL_FILE="output/yogananda_videos.csv"
+
+          # header
+          echo "video_id,title,thumbnail,upload_date,webpage_url,duration" > "$TEMP_FILE"
 
           if [ -f "$LAST_RUN_FILE" ]; then
             LAST_RUN=$(cat "$LAST_RUN_FILE")
-            echo "Previous run detected: $LAST_RUN"
+            echo "Incremental run since: $LAST_RUN"
 
-            yt-dlp --no-flat-playlist \
+            yt-dlp \
+              --no-flat-playlist \
               --ignore-errors \
               --dateafter "$LAST_RUN" \
-              --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
+              --print "%(id)s,\"%(title)s\",\"%(thumbnail)s\",\"%(upload_date>%Y-%m-%d)s\",\"%(webpage_url)s\",\"%(duration_string)s\"" \
               "$CHANNEL_URL" \
-              > output/new_videos.csv
-
+              >> "$TEMP_FILE"
           else
-            echo "First run detected — exporting ALL videos"
+            echo "First run — full dump"
 
-            yt-dlp --flat-playlist \
+            yt-dlp \
+              --no-flat-playlist \
               --ignore-errors \
-              --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
+              --print "%(id)s,\"%(title)s\",\"%(thumbnail)s\",\"%(upload_date>%Y-%m-%d)s\",\"%(webpage_url)s\",\"%(duration_string)s\"" \
               "$CHANNEL_URL" \
-              > output/yogananda_videos.csv
+              >> "$TEMP_FILE"
           fi
 
+          # sort + dedupe by video_id (column 1)
+          tail -n +2 "$TEMP_FILE" | sort -t',' -k1,1 -u > "$FINAL_FILE"
+
+          # re-add header
+          (head -n 1 "$TEMP_FILE" && cat "$FINAL_FILE") > output/yogananda_videos.csv
+
+          # update state
           date -u +%Y%m%d > "$LAST_RUN_FILE"
+
+      - name: Generate GitHub Pages Dashboard
+        run: |
+          python3 << 'EOF'
+          import csv
+
+          rows = []
+          with open("output/yogananda_videos.csv", "r") as f:
+              reader = csv.DictReader(f)
+              for r in reader:
+                  rows.append(r)
+
+          html = """
+          <html>
+          <head>
+            <title>YouTube Dashboard</title>
+            <style>
+              body { font-family: Arial; padding: 20px; }
+              .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
+              .card { border: 1px solid #ddd; padding: 10px; border-radius: 10px; }
+              img { width: 100%; border-radius: 8px; }
+              a { text-decoration: none; color: black; }
+            </style>
+          </head>
+          <body>
+            <h1>YouTube Channel Dashboard</h1>
+            <div class="grid">
+          """
+
+          for r in rows:
+              html += f"""
+              <div class="card">
+                <a href="{r['webpage_url']}" target="_blank">
+                  <img src="{r['thumbnail']}"/>
+                  <h3>{r['title']}</h3>
+                </a>
+                <p>{r['upload_date']} • {r['duration']}</p>
+              </div>
+              """
+
+          html += """
+            </div>
+          </body>
+          </html>
+          """
+
+          with open("docs/index.html", "w") as f:
+              f.write(html)
+          EOF
 
       - name: Commit Results
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add output/
-          git add state/
+          git add output/yogananda_videos.csv
+          git add state/last_run.txt
+          git add docs/
 
           git diff --cached --quiet || (
-            git commit -m "Update YouTube exports"
+            git commit -m "Update YouTube export + dashboard"
             git push
           )
