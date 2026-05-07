@@ -1,0 +1,47 @@
+name: Export YouTube Videos
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install yt-dlp
+        run: |
+          python -m pip install --upgrade pip
+          pip install yt-dlp
+
+      - name: Export Channel Videos
+        run: |
+          mkdir -p output
+
+          yt-dlp --flat-playlist \
+            --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
+            "https://www.youtube.com/@YoganandaSRF/videos" \
+            > output/yogananda_videos.csv
+
+      - name: Display CSV
+        run: |
+          cat output/yogananda_videos.csv
+
+      - name: Commit CSV
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add output/yogananda_videos.csv
+
+          git diff --cached --quiet || (
+            git commit -m "Auto update YouTube export"
+            git push
+          )
