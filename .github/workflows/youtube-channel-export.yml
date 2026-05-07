@@ -34,7 +34,7 @@ jobs:
             LAST_RUN=$(cat "$LAST_RUN_FILE")
             echo "Previous run detected: $LAST_RUN"
 
-            yt-dlp --flat-playlist \
+            yt-dlp --no-flat-playlist \
               --ignore-errors \
               --dateafter "$LAST_RUN" \
               --print "%(upload_date>%Y-%m-%d)s,\"%(title)s\",%(webpage_url)s" \
